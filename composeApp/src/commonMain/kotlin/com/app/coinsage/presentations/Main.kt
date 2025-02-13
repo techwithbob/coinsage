@@ -43,6 +43,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coinsage.composeapp.generated.resources.Res
 import coinsage.composeapp.generated.resources.camera
+import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.core.PickerMode
+import io.github.vinceglb.filekit.core.PickerType
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
@@ -53,6 +56,10 @@ class Main {
 @Composable
 fun Dashboard() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    // Pick files from Compose
+    val launcher = rememberFilePickerLauncher(type = PickerType.Image, mode = PickerMode.Single) { files ->
+        // Handle picked files
+    }
     val scope = rememberCoroutineScope()
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -151,7 +158,7 @@ fun Dashboard() {
             ) {
                 item {
                     Column(modifier = Modifier.width(150.dp), verticalArrangement = Arrangement.spacedBy(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Button(onClick = { /*TODO*/ }, modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = { launcher.launch() }, modifier = Modifier.fillMaxWidth()) {
                             Text("Upload", modifier = Modifier.padding(8.dp))
                         }
                         Button(onClick = { /*TODO*/ }, modifier = Modifier.fillMaxWidth()) {
