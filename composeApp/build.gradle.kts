@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+
+    kotlin("plugin.serialization") version libs.versions.kotlin
 }
 
 kotlin {
@@ -97,6 +99,9 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
         wasmJsMain.dependencies {
+            implementation(libs.ktor.client.js)
+        }
+        jsMain.dependencies {
             implementation(libs.ktor.client.js)
         }
     }
