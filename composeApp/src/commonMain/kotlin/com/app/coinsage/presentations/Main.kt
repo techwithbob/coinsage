@@ -1,37 +1,41 @@
 package com.app.coinsage.presentations
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.BadgedBox
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FabPosition
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
@@ -50,11 +55,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import coinsage.composeapp.generated.resources.Res
-import coinsage.composeapp.generated.resources.camera
 import com.aallam.openai.api.chat.ChatCompletionRequest
 import com.aallam.openai.api.chat.ChatMessage
-import com.aallam.openai.api.chat.ChatRole
 import com.aallam.openai.api.chat.ImagePart
 import com.aallam.openai.api.chat.TextPart
 import com.aallam.openai.api.model.ModelId
@@ -71,7 +73,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
 
 class Main {
 }
@@ -79,8 +80,38 @@ class Main {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Dashboard() {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var loadingState by remember { mutableStateOf(false) }
 
+    // Custom animation values
+    val backgroundAnimation = rememberInfiniteTransition()
+    val gradientOffset = backgroundAnimation.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(20000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    // Shimmer effect for loading
+    val shimmerEffect = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFF2D1B6B),
+                Color(0xFF3D2B7B),
+                Color(0xFF2D1B6B)
+            ),
+            start = Offset(gradientOffset.value - 200f, gradientOffset.value - 200f),
+            end = Offset(gradientOffset.value + 200f, gradientOffset.value + 200f)
+        )
+    }
+    val nonShimmer = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(0.1f),
+            )
+        )
+    }
     val openAI = remember {
         createOpenAIClient(
             baseUrl = BASEURL,
@@ -103,6 +134,7 @@ fun Dashboard() {
     ) { platformFile ->
         platformFile?.let { file ->
             scope.launch {
+                loadingState = true
                 bytes = if (file.supportsStreams()) {
                     val size = file.getSize()
                     if (size != null && size > 0L) {
@@ -130,6 +162,7 @@ fun Dashboard() {
 
 
     fun fetchImageResponse(img: ByteArray) {
+        loadingState = true
         scope.launch {
             try {
                 error = null  // Reset error
@@ -166,6 +199,7 @@ fun Dashboard() {
                         }
                     }
                     .onCompletion {
+                        loadingState = false
                         println("Streaming completed.")
                         if (collectedResponse.isNotBlank()) {
                             messageParts.add(collectedResponse) // Store final response
@@ -176,6 +210,7 @@ fun Dashboard() {
                     .launchIn(scope)
             } catch (e: Exception) {
                 error = "Failed to fetch response: ${e.message}"
+                loadingState = false
             }
         }
     }
@@ -184,31 +219,21 @@ fun Dashboard() {
             println("Final message received: ${messageParts.joinToString(" ")}")
         }
     }
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                NavigationDrawerItem(
-                    label = { Text(text = "Profile") },
-                    icon = { Icon(Icons.Default.Person, contentDescription = null) },
-                    selected = false,
-                    onClick = {  }
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Animated background
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF2D1B6B),
+                        Color(0xFF3D2B7B),
+                        Color(0xFF4D3B8B),
+                        Color(0xFFBBB3E5)
+                    ),
+                    startY = gradientOffset.value
                 )
-                NavigationDrawerItem(
-                    label = { Text(text = "Info") },
-                    icon = { Icon(Icons.Default.Info, contentDescription = null) },
-                    selected = false,
-                    onClick = {  }
-                )
-                NavigationDrawerItem(
-                    label = { Text(text = "Settings") },
-                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                    selected = false,
-                    onClick = {  }
-                )
-            }
+            )
         }
-    ) {
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
@@ -229,35 +254,9 @@ fun Dashboard() {
                             append(" Sage")
                         }, color = Color.White, textAlign = TextAlign.Center)
                     },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            scope.launch {
-                                if (drawerState.isClosed) {
-                                    drawerState.open()
-                                } else {
-                                    drawerState.close()
-                                }
-                            }
-                        }) {
-                            BadgedBox(
-                                badge = {
-                                    //Badge()
-                                }
-                            ) {
-                                Icon(Icons.Default.Menu, contentDescription = null, tint = Color.White)
-                            }
-                        }
-                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF2D1B6B))
                 )
             },
-            floatingActionButton = { FloatingActionButton(onClick = {},
-                content = {Icon(
-                    painter = painterResource(Res.drawable.camera),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )}) },
-            floatingActionButtonPosition = FabPosition.Center,
             containerColor = Color(0xFF2D1B6B)
         ) { paddingValues ->
             bytes?.let { fetchImageResponse(it) }
@@ -266,38 +265,77 @@ fun Dashboard() {
                     .fillMaxSize()
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp),
-                state = listState,  // Important: Use the listState
+                state = listState,
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 item {
+                    AnimatedVisibility(
+                        visible = error != null,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        error?.let {
+                            Text(
+                                text = it,
+                                color = Color.Red.copy(alpha = 0.8f),
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .background(
+                                        Color.White.copy(alpha = 0.1f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(8.dp)
+                            )
+                        }
+                    }
+
                     AnimatedContent(
                         targetState = messageParts.isNotEmpty(),
-                        label = "content"
+                        label = "content",
+                        transitionSpec = {
+                            (fadeIn() + slideInVertically { it }).togetherWith(fadeOut() + slideOutVertically { -it })
+                        }
                     ) { hasMessages ->
                         if (hasMessages) {
-                            DynamicTextRenderer(message = messageParts.joinToString(""))
+                            DynamicTextRenderer(
+                                message = messageParts.joinToString(""),
+                                modifier = Modifier
+                                    .background(
+                                        Color.White.copy(alpha = 0.1f),
+                                        RoundedCornerShape(16.dp)
+                                    )
+                                    .padding(16.dp)
+                            )
                         } else {
                             Column(
-                                modifier = Modifier.width(150.dp),
+                                modifier = Modifier
+                                    .width(200.dp)
+                                    .background(brush = if(!loadingState) shimmerEffect else nonShimmer, RoundedCornerShape(16.dp) )
+                                    .padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(20.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Button(
                                     onClick = { launcher.launch() },
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+                                    ),
+                                    enabled = !loadingState
                                 ) {
-                                    Text(
-                                        if (showOutput) "Finish uploaded" else "Upload",
-                                        modifier = Modifier.padding(8.dp)
-                                    )
+                                    AnimatedContent(
+                                        targetState = if (showOutput) "Finish uploaded" else "Upload",
+                                        label = "button_text"
+                                    ) { text ->
+                                        Text(
+                                            text = text,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
                                 }
-                                /*Button(
-                                    onClick = { fetchResponse() },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("Chat", modifier = Modifier.padding(8.dp))
-                                }*/
                             }
                         }
                     }

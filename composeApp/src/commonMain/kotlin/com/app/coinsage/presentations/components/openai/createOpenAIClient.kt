@@ -1,22 +1,9 @@
 package com.app.coinsage.presentations.components.openai
 
-import com.aallam.openai.api.chat.ChatCompletionRequest
-import com.aallam.openai.api.chat.ChatMessage
 import com.aallam.openai.api.http.Timeout
-import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
 import com.aallam.openai.client.OpenAIConfig
 import com.aallam.openai.client.OpenAIHost
-import com.app.coinsage.presentations.components.Constants.Companion.BASEURL2
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.HttpClientEngine
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.http.HttpHeaders
-import io.ktor.util.Platform
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
 fun createOpenAIClient(baseUrl: String, apiKey: String): OpenAI {
@@ -40,6 +27,7 @@ fun createOpenAIClient(baseUrl: String, apiKey: String): OpenAI {
         )
     )
 }
+/*
 fun fetchResponse() {
     scope.launch {
         try {
@@ -71,4 +59,4 @@ fun fetchResponse() {
             e.printStackTrace()  // Add this for more detailed error information
         }
     }
-}
+}*/
